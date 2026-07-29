@@ -221,16 +221,42 @@ static const NSInteger MENU_ITEM_DISABLE_FOREVER = 205;
     [self.delegate menuBarController_setLaunchAtLogin:NO];
 }
 
+- (NSString *)disabledMenuItemTitle
+{
+    NSTimeInterval scheduledTime = [MJUserDefaults.shared getScheduledTimeToEnableMuting];
+    if (scheduledTime <= 0) {
+        return @"Disabled";
+    }
+
+    NSTimeInterval remaining = scheduledTime - [[NSDate date] timeIntervalSince1970];
+    if (remaining <= 0) {
+        return @"Disabled";
+    }
+
+    NSInteger hours = (NSInteger)(remaining / 3600);
+    NSInteger minutes = (NSInteger)((remaining - hours * 3600) / 60);
+
+    if (hours > 0) {
+        return [NSString stringWithFormat:@"Disabled (for %ldh%ldm...)", (long)hours, (long)minutes];
+    } else if (minutes > 0) {
+        return [NSString stringWithFormat:@"Disabled (for %ldm...)", (long)minutes];
+    } else {
+        return @"Disabled (for <1m...)";
+    }
+}
+
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem
 {
-    if (MJUserDefaults.shared.isMutingDisabled) {
-        if (menuItem.tag == MENU_ITEM_DISABLE_MUTING) {
+    if (menuItem.tag == MENU_ITEM_DISABLE_MUTING) {
+        if (MJUserDefaults.shared.isMutingDisabled) {
+            menuItem.title = [self disabledMenuItemTitle];
             return NO;
+        } else {
+            menuItem.title = @"Disable";
+            return YES;
         }
-    } else {
-        if (menuItem.tag == MENU_ITEM_ENABLE_MUTING) {
-            return NO;
-        }
+    } else if (menuItem.tag == MENU_ITEM_ENABLE_MUTING) {
+        return MJUserDefaults.shared.isMutingDisabled;
     }
     if (menuItem.tag == MENU_ITEM_LAUNCH_AT_LOGIN) {
         menuItem.state = [self.delegate menuBarController_isSetToLaunchAtLogin] ? NSOnState : NSOffState;
